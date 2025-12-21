@@ -3,6 +3,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Link, useNavigate } from 'react-router-dom';
 
+const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
 interface UserData {
     id: number;
     username: string;
@@ -36,7 +39,7 @@ export default function Admin() {
 
     const fetchUsers = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/admin/users', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/users`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (!res.ok) throw new Error('Fetch failed');
@@ -52,7 +55,7 @@ export default function Admin() {
     const handleDelete = async (id: number) => {
         if (!confirm('确定删除该用户吗？所有数据将丢失！')) return;
         try {
-            const res = await fetch(`http://localhost:5000/api/admin/users/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/users/${id}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -70,7 +73,7 @@ export default function Admin() {
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch('http://localhost:5000/api/admin/users', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/users`, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -109,7 +112,7 @@ export default function Admin() {
         if (!editingUser) return;
         
         try {
-            const res = await fetch(`http://localhost:5000/api/admin/users/${editingUser.id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/users/${editingUser.id}`, {
                 method: 'PUT',
                 headers: { 
                     'Content-Type': 'application/json',

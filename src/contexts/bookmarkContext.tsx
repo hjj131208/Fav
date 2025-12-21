@@ -6,6 +6,9 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useAuth } from '@/contexts/AuthContext';
 import { Bookmark, Category, BookmarkFormData } from '@/types';
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
 // 定义上下文类型
 interface BookmarkContextType {
   bookmarks: Bookmark[];
@@ -51,7 +54,7 @@ export function BookmarkProvider({ children }: { children: ReactNode }) {
   // Sync from server on login
   useEffect(() => {
     if (user && token) {
-      fetch('http://localhost:5000/api/user/data', {
+      fetch(`${API_BASE_URL}/api/user/data`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(res => {
@@ -124,7 +127,7 @@ export function BookmarkProvider({ children }: { children: ReactNode }) {
       if (!user || !token) return;
       setIsSyncing(true);
       try {
-          const res = await fetch(`http://localhost:5000/api/${endpoint}`, {
+          const res = await fetch(`${API_BASE_URL}/api/${endpoint}`, {
               method,
               headers: {
                   'Content-Type': 'application/json',
@@ -398,7 +401,7 @@ export function BookmarkProvider({ children }: { children: ReactNode }) {
       // Reorder changes EVERYTHING's index.
       // Let's use the bulk sync for reorder for now as it's cleaner than N API calls.
       if (user && token) {
-          fetch('http://localhost:5000/api/user/sync', {
+          fetch(`${API_BASE_URL}/api/user/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ categories: newCategories, bookmarks }) // Send all bookmarks too? Risky.
@@ -636,7 +639,7 @@ export function BookmarkProvider({ children }: { children: ReactNode }) {
         if (newBookmarks.length > 50) {
              // Fallback to bulk sync for large imports to avoid freezing
              if (user && token) {
-                 fetch('http://localhost:5000/api/user/sync', {
+                 fetch(`${API_BASE_URL}/api/user/sync`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({ categories: [...categories, ...categoriesToAdd], bookmarks: [...bookmarks, ...newBookmarks] })
