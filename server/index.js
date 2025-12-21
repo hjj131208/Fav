@@ -7,7 +7,7 @@ import net from 'net';
 import dns from 'dns/promises';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import * as db from './db.js';
@@ -23,6 +23,11 @@ const JWT_EXPIRES_IN = '24h';
 
 const app = express();
 
+const trustProxy = process.env.TRUST_PROXY;
+if (trustProxy) {
+  app.set('trust proxy', trustProxy === 'true' ? 1 : trustProxy);
+}
+
 // Security Middleware
 app.use(helmet());
 app.use(cors({
@@ -34,9 +39,24 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Rate Limiting
-const loginLimiter = rateLimit({
+const loginLimiterByAccount = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 login requests per windowMs
+  max: 10, // Limit each IP+account to 10 failed login requests per windowMs
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => {
+    const ip = ipKeyGenerator(req);
+    const raw = req.body?.usernameOrEmail;
+    const identity = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+    return `${ip}:${identity || 'unknown'}`;
+  },
+  message: { error: 'Too many login attempts, please try again after 15 minutes' }
+});
+
+const loginLimiterByIp = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 80,
+  skipSuccessfulRequests: true,
+  keyGenerator: ipKeyGenerator,
   message: { error: 'Too many login attempts, please try again after 15 minutes' }
 });
 
@@ -182,7 +202,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // Login
-app.post('/api/auth/login', loginLimiter, async (req, res) => {
+app.post('/api/auth/login', loginLimiterByIp, loginLimiterByAccount, async (req, res) => {
   const { usernameOrEmail, password } = req.body;
   if (!usernameOrEmail || !password) {
     return res.status(400).json({ error: 'Missing fields' });
