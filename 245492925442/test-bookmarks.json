@@ -1,0 +1,34 @@
+{
+  "bookmarks": [
+    {
+      "id": "test-1",
+      "title": "测试书签1",
+      "url": "https://example.com",
+      "description": "这是一个测试书签",
+      "categoryId": "test-cat-1",
+      "createdAt": "2024-01-01T10:00:00.000Z"
+    },
+    {
+      "id": "test-2",
+      "title": "测试书签2",
+      "url": "https://google.com",
+      "description": "另一个测试书签",
+      "categoryId": "test-cat-2",
+      "createdAt": "2024-01-01T10:05:00.000Z"
+    }
+  ],
+  "categories": [
+    {
+      "id": "test-cat-1",
+      "name": "测试分类1",
+      "color": "#3b82f6"
+    },
+    {
+      "id": "test-cat-2",
+      "name": "测试分类2",
+      "color": "#ef4444"
+    }
+  ],
+  "exportDate": "2024-01-01T10:00:00.000Z",
+  "version": "1.0"
+}

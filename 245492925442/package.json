@@ -1,0 +1,45 @@
+{
+  "name": "project_template_react",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host --port 3000",
+    "build:client": "vite build --outDir dist/client",
+    "build": "rimraf dist && npm run build:client && copy package.json dist\\ && echo. > dist\\build.flag",
+    "server": "node server/index.js",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.1.0",
+    "bcrypt": "^6.0.0",
+    "clsx": "^2.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hot-toast": "^2.6.0",
+    "react-router-dom": "^7.3.0",
+    "sonner": "^2.0.2",
+    "sqlite3": "^5.1.7",
+    "tailwind-merge": "^3.0.2",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/uuid": "^9.0.8",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "rimraf": "^6.0.1",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.7.2",
+    "vite": "^6.2.0",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}
