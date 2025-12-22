@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host --port 3000",
     "build:client": "vite build --outDir dist/client",
-    "build": "rimraf dist && npm run build:client && copy package.json dist\\ && echo. > dist\\build.flag",
+    "build": "rimraf dist && npm run build:client && node --input-type=module -e \"import fs from 'node:fs'; import path from 'node:path'; const distDir='dist'; fs.copyFileSync('package.json', path.join(distDir,'package.json')); fs.writeFileSync(path.join(distDir,'build.flag'),'');\"",
     "server": "node server/index.js",
     "deploy": "wrangler deploy"
   },
