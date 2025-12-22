@@ -11,6 +11,8 @@ interface AddBookmarkModalProps {
   editingBookmark?: Bookmark;
   mode?: 'single' | 'batch';
   existingBookmarks: Bookmark[];
+  onRequestAddCategory?: () => void;
+  newCategoryId?: string | null;
 }
 
 export function AddBookmarkModal({ 
@@ -19,7 +21,9 @@ export function AddBookmarkModal({
   onSave, 
   categories,
   editingBookmark,
-  mode
+  mode,
+  onRequestAddCategory,
+  newCategoryId
 }: AddBookmarkModalProps) {
   // 表单状态
   const [formData, setFormData] = useState<BookmarkFormData>({
@@ -70,15 +74,22 @@ export function AddBookmarkModal({
         }
         // 初始化标签文本
         setTagsText((editingBookmark.tags || []).join(', '));
-     } else {
-        // 新建时不自动选择分类，让用户手动选择
+    } else {
        setFormData(prev => ({ ...prev, categoryId: '', downloadUrl: '', showDownload: false }));
-       // 新建态重置favicon本地状态
        setFaviconImage('');
-       // 重置标签文本
        setTagsText('');
     }
-  }, [editingBookmark, categories]);
+  }, [editingBookmark]);
+
+  useEffect(() => {
+    if (!editingBookmark && newCategoryId) {
+      setFormData(prev => ({
+        ...prev,
+        categoryId: newCategoryId
+      }));
+      setError('');
+    }
+  }, [newCategoryId, editingBookmark]);
   
   // 处理表单变化
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -717,25 +728,37 @@ export function AddBookmarkModal({
                  placeholder="例如：https://music.163.com"
                />
              </div>
-           )}
+          )}
           
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               分类 <span className="text-red-500">*</span>
             </label>
-            <select
-              name="categoryId"
-              value={formData.categoryId}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">请选择分类</option>
-                {categories.map(category => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-            </select>
+            <div className="flex items-center gap-2">
+              <select
+                name="categoryId"
+                value={formData.categoryId}
+                onChange={handleChange}
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">请选择分类</option>
+                  {categories.map(category => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+              </select>
+              {onRequestAddCategory && (
+                <button
+                  type="button"
+                  onClick={onRequestAddCategory}
+                  className="inline-flex items-center px-2.5 py-1.5 text-xs rounded-lg border border-dashed border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-300 transition-colors whitespace-nowrap"
+                >
+                  <i className="fa-solid fa-plus mr-1.5"></i>
+                  创建新分类
+                </button>
+              )}
+            </div>
           </div>
            
             {mode !== 'batch' && (

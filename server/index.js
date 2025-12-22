@@ -28,8 +28,14 @@ if (trustProxy) {
   app.set('trust proxy', trustProxy === 'true' ? 1 : trustProxy);
 }
 
-// Security Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https:"]
+    }
+  }
+}));
 app.use(cors({
     origin: '*', // In production, replace with specific origin
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

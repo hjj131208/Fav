@@ -175,20 +175,6 @@ const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-             {/* 管理按钮 - 只在小屏幕时显示 */}
-             <button
-               onClick={onToggleQuickAccess}
-               className="lg:hidden px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-sm transition-colors bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800/50 pointer-events-auto relative z-[10000]"
-               title={isQuickAccessOpen ? "关闭管理" : "打开管理"}
-             >
-               {isQuickAccessOpen ? (
-                 <TimesIcon className="w-4 h-4" />
-               ) : (
-                 <CogIcon className="w-4 h-4" />
-               )}
-               <span className="hidden sm:inline">管理</span>
-             </button>
-
              {/* Login/User Section */}
              {isAuthenticated ? (
                <div className="flex items-center gap-2">

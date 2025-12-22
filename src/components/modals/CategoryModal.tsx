@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 interface CategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (name: string, icon?: string, color?: string) => void;
+  onSave: (name: string, icon?: string, color?: string) => Category | void;
   editingCategory?: Category;
 }
 

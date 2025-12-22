@@ -20,7 +20,7 @@ interface BookmarkContextType {
   // 新增：部分更新书签（用于记事本等轻量更新）
   patchBookmark: (id: string, data: Partial<Bookmark>) => void;
   deleteBookmark: (id: string) => void;
-  addCategory: (name: string, icon?: string, color?: string) => void;
+  addCategory: (name: string, icon?: string, color?: string) => Category;
   updateCategory: (id: string, name: string, icon?: string, color?: string) => void;
   deleteCategory: (id: string) => void;
   addBookmarks: (dataArray: BookmarkFormData[]) => void;
@@ -319,17 +319,17 @@ export function BookmarkProvider({ children }: { children: ReactNode }) {
     };
 
   // 添加分类
-  const addCategory = (name: string, icon?: string, color?: string) => {
+  const addCategory = (name: string, icon?: string, color?: string): Category => {
     const newCategory: Category = {
       id: uuidv4(),
       name,
       icon: icon || 'fa-folder',
       color: color || '#6366f1',
     };
-    
     setCategories([...categories, newCategory]);
     // sortOrder defaults to 0 or last. For simplicity, we just add.
     apiCall('categories', 'POST', { ...newCategory, sortOrder: categories.length });
+    return newCategory;
   };
 
   // 更新分类

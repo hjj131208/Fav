@@ -4,13 +4,13 @@ import { CategorySidebar } from "@/components/CategorySidebar";
 import { toast } from "sonner";
 import { Bookmark, Category } from "@/types";
 import Header from "@/components/Header";
+import AddBookmarkModal from "@/components/modals/AddBookmarkModal";
 import { useSearchEngines } from "@/hooks/useSearchEngines";
 import { useBookmarkSelection } from "@/hooks/useBookmarkSelection";
 import { useBookmarkDragDrop } from "@/hooks/useBookmarkDragDrop";
 import { BookmarkMainArea } from "@/components/BookmarkMainArea";
 
 // 懒加载非首屏必需组件以降低首屏体积
-const AddBookmarkModal = lazy(() => import("@/components/modals/AddBookmarkModal"));
 const CategoryModal = lazy(() => import("@/components/modals/CategoryModal"));
 const HelpModal = lazy(() => import("@/components/modals/HelpModal"));
 const ExportMenu = lazy(() => import("@/components/ExportMenu"));
@@ -66,6 +66,7 @@ export default function Home() {
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
     const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+    const [newCategoryId, setNewCategoryId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const isCompactMode = false;
     const favoriteBookmarks = bookmarks.filter(bookmark => bookmark.isFavorite);
@@ -632,30 +633,31 @@ export default function Home() {
                 </div>
             </>}
             {isAddBookmarkOpen && (
-              <Suspense fallback={ModalSkeleton}>
-                <AddBookmarkModal
-                  isOpen={true}
-                  onClose={() => {
-                      setIsAddBookmarkOpen(false);
-                      setEditingBookmark(null);
-                      setAddMode("single");
-                  }}
-                  existingBookmarks={bookmarks}
-                  onSave={data => {
-                      if (Array.isArray(data)) {
-                          addBookmarks(data);
-                      } else if (editingBookmark) {
-                          updateBookmark(editingBookmark.id, data);
-                          setEditingBookmark(null);
-                      } else {
-                          addBookmark(data);
-                      }
-                  }}
-                  mode={addMode}
-                  categories={categories}
-                  editingBookmark={editingBookmark || undefined}
-                />
-              </Suspense>
+              <AddBookmarkModal
+                isOpen={true}
+                onClose={() => {
+                  setIsAddBookmarkOpen(false);
+                  setEditingBookmark(null);
+                  setAddMode("single");
+                  setNewCategoryId(null);
+                }}
+                existingBookmarks={bookmarks}
+                onSave={data => {
+                  if (Array.isArray(data)) {
+                    addBookmarks(data);
+                  } else if (editingBookmark) {
+                    updateBookmark(editingBookmark.id, data);
+                    setEditingBookmark(null);
+                  } else {
+                    addBookmark(data);
+                  }
+                }}
+                mode={addMode}
+                categories={categories}
+                editingBookmark={editingBookmark || undefined}
+                onRequestAddCategory={() => setIsAddCategoryOpen(true)}
+                newCategoryId={newCategoryId}
+              />
             )}
             
             <div
@@ -715,7 +717,10 @@ export default function Home() {
                           updateCategory(editingCategory.id, name, icon, color);
                           setEditingCategory(null);
                       }
-                  } : addCategory}
+                  } : (name, icon, color) => {
+                      const created = addCategory(name, icon, color);
+                      setNewCategoryId(created.id);
+                  }}
                   editingCategory={editingCategory || undefined}
                 />
               </Suspense>
@@ -804,14 +809,20 @@ export default function Home() {
                 />
               </Suspense>
             )}
-            
-            {/* 快速访问栏遮罩层 - 只在小屏幕时显示 */}
             {isQuickAccessOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-                    onClick={() => setIsQuickAccessOpen(false)}
-                />
+              <div
+                className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                onClick={() => setIsQuickAccessOpen(false)}
+              />
             )}
+            <button
+              type="button"
+              onClick={() => setIsQuickAccessOpen(prev => !prev)}
+              className="fixed right-4 top-1/2 -translate-y-1/2 z-50 lg:hidden w-11 h-11 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+              title={isQuickAccessOpen ? "关闭管理" : "打开管理"}
+            >
+              <i className={`fa-solid ${isQuickAccessOpen ? "fa-xmark" : "fa-plus"} text-lg`}></i>
+            </button>
         </div>
     );
 }
