@@ -48,7 +48,6 @@ export function useBookmarkSelection(
             toast.success(`已将 ${selectedBookmarks.length} 个网站移动到所选分类`);
             setSelectedBookmarks([]);
             onSuccess?.();
-            window.location.reload();
         }
     };
 
@@ -58,7 +57,6 @@ export function useBookmarkSelection(
             toast.success(`已删除 ${selectedBookmarks.length} 个网站`);
             setSelectedBookmarks([]);
             onSuccess?.();
-            window.location.reload();
         }
     };
 
