@@ -51,29 +51,67 @@ export function BookmarkProvider({ children }: { children: ReactNode }) {
   const { user, token } = useAuth();
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Sync from server on login
   useEffect(() => {
-    if (user && token) {
-      fetch(`${API_BASE_URL}/api/user/data`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      .then(res => {
-          if (!res.ok) throw new Error('Failed to fetch data');
-          return res.json();
-      })
-      .then(data => {
-        if (data) {
-           // Only update if we have valid arrays, to avoid wiping local state with bad server data
-           if (Array.isArray(data.categories)) setCategories(data.categories);
-           if (Array.isArray(data.bookmarks)) setBookmarks(data.bookmarks);
-           toast.success('已同步云端数据');
+    if (!user || !token) return;
+
+    let cancelled = false;
+
+    const syncOnLogin = async () => {
+      try {
+        const currentUserId = String(user.id);
+        const ownerKey = 'bookmarkOwnerUserId';
+        const ownerUserId = localStorage.getItem(ownerKey);
+
+        if (ownerUserId && ownerUserId === currentUserId) {
+          const res = await fetch(`${API_BASE_URL}/api/user/sync`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ categories, bookmarks })
+          });
+
+          if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            throw new Error(text || '同步失败');
+          }
+
+          if (cancelled) return;
+          localStorage.setItem(ownerKey, currentUserId);
+          toast.success('已将本地修改同步到云端');
+        } else {
+          const res = await fetch(`${API_BASE_URL}/api/user/data`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+
+          if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            throw new Error(text || '同步数据失败');
+          }
+
+          const data = await res.json();
+          if (cancelled) return;
+
+          if (data) {
+            if (Array.isArray(data.categories)) setCategories(data.categories);
+            if (Array.isArray(data.bookmarks)) setBookmarks(data.bookmarks);
+          }
+
+          localStorage.setItem(ownerKey, currentUserId);
+          toast.success('已同步云端数据');
         }
-      })
-      .catch(err => {
-          console.error(err);
-          toast.error('同步数据失败');
-      });
-    }
+      } catch (e) {
+        console.error(e);
+        toast.error('同步数据失败');
+      }
+    };
+
+    syncOnLogin();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user, token]);
 
   // Sync to server on change (DEPRECATED - Moved to individual actions)
