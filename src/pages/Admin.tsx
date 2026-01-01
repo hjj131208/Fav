@@ -37,11 +37,24 @@ export default function Admin() {
         fetchUsers();
     }, [user]);
 
+    const handleAuthExpired = () => {
+        toast.error('登录已过期，请重新登录');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        window.dispatchEvent(new Event('auth-expired'));
+    };
+
     const fetchUsers = async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/admin/users`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            if (res.status === 401 || res.status === 403) {
+                handleAuthExpired();
+                return;
+            }
             if (!res.ok) throw new Error('Fetch failed');
             const data = await res.json();
             setUsers(data);
@@ -59,6 +72,10 @@ export default function Admin() {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` }
             });
+            if (res.status === 401 || res.status === 403) {
+                handleAuthExpired();
+                return;
+            }
             if (res.ok) {
                 toast.success('用户已删除');
                 fetchUsers();
@@ -81,6 +98,10 @@ export default function Admin() {
                 },
                 body: JSON.stringify(newUser)
             });
+            if (res.status === 401 || res.status === 403) {
+                handleAuthExpired();
+                return;
+            }
             if (res.ok) {
                 toast.success('用户创建成功');
                 setShowAddModal(false);
@@ -120,6 +141,10 @@ export default function Admin() {
                 },
                 body: JSON.stringify(editForm)
             });
+            if (res.status === 401 || res.status === 403) {
+                handleAuthExpired();
+                return;
+            }
             if (res.ok) {
                     toast.success('用户更新成功');
                     setShowEditModal(false);

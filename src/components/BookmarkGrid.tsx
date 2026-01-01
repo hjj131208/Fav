@@ -253,6 +253,7 @@ if (pinnedItems.length > maxItemsForTwoRows) {
         // 统计当前分类的选择数量与是否全选
         const selectedCount = categoryBookmarks.filter(b => selectedSet.has(b.id)).length;
         const isCategoryAllSelected = categoryBookmarks.length > 0 && selectedCount === categoryBookmarks.length;
+        if (displayedBookmarks.length === 0) return null;
         
          return (
                     <div 
@@ -264,10 +265,12 @@ if (pinnedItems.length > maxItemsForTwoRows) {
           >
                <div className="flex items-center justify-between mb-4 p-3 rounded-lg bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-800">
                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                 <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                 {categoryName} 
-                 <span className="text-sm font-normal text-gray-500 dark:text-gray-400">({categoryBookmarks.length})</span>
-               </h3>
+                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                {categoryName}
+                {categoryBookmarks.length > 0 && (
+                  <span className="text-sm font-normal text-gray-500 dark:text-gray-400">({categoryBookmarks.length})</span>
+                )}
+              </h3>
                
                <div className="flex items-center gap-3">
                  {selectionMode && (

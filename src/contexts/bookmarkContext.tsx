@@ -162,27 +162,39 @@ export function BookmarkProvider({ children }: { children: ReactNode }) {
 
   // Helper to make API calls
   const apiCall = async (endpoint: string, method: string, body?: any) => {
-      if (!user || !token) return;
-      setIsSyncing(true);
-      try {
-          const res = await fetch(`${API_BASE_URL}/api/${endpoint}`, {
-              method,
-              headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${token}`
-              },
-              body: JSON.stringify(body)
-          });
-          if (!res.ok) {
-             console.error(`API Call ${method} ${endpoint} failed`);
-             toast.error('同步失败，请刷新页面');
-          }
-      } catch (e) {
-          console.error(e);
-          toast.error('网络错误');
-      } finally {
-          setIsSyncing(false);
+    if (!user || !token) return;
+    setIsSyncing(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/${endpoint}`, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        console.error(`API Call ${method} ${endpoint} unauthorized`);
+        toast.error('登录已过期，请重新登录');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        window.dispatchEvent(new Event('auth-expired'));
+        return;
       }
+
+      if (!res.ok) {
+        console.error(`API Call ${method} ${endpoint} failed`);
+        toast.error('同步失败，请稍后重试');
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('网络错误');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   // 移除自动创建默认分类的逻辑，允许用户完全清空分类
