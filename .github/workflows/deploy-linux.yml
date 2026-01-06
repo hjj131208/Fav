@@ -1,0 +1,61 @@
+name: Deploy (Linux)
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-linux
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DEPLOY_HOST:-}" ] || [ -z "${DEPLOY_USER:-}" ] || [ -z "${DEPLOY_SSH_KEY:-}" ]; then
+            echo "Missing required secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY"
+            exit 1
+          fi
+
+          PORT="${DEPLOY_PORT:-22}"
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf "%s" "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          ssh-keyscan -p "$PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+          ssh -p "$PORT" -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'bash -s' <<'EOF'
+          set -euo pipefail
+
+          APP_DIR="/opt/bookmark-manager"
+          BRANCH="main"
+          PM2_NAME="bookmark-manager"
+
+          cd "$APP_DIR"
+          git fetch --all --prune
+          git reset --hard "origin/$BRANCH"
+
+          npm ci
+          npm run build
+
+          if pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
+            pm2 restart "$PM2_NAME" --update-env
+          else
+            pm2 start server/index.js --name "$PM2_NAME" --update-env
+          fi
+
+          pm2 save
+          EOF

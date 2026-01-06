@@ -1,208 +1,144 @@
-# 部署手册
+# Linux 部署手册（含 Git 推送自动更新）
 
-本手册覆盖从环境准备、构建、配置到启动/停止的完整流程，适用于在服务器上部署本项目（前端 + 后端一体化，由 Node.js 服务同时提供页面与 API）。
+本手册仅覆盖 Linux（推荐 Ubuntu 22.04+/Debian 12+）：前端+后端一体化部署，由 Node.js 服务同时提供页面与 API，并支持“推送到 Git 仓库后自动部署更新”。
 
-## 1. 环境准备
+## 1. 服务器准备（一次性）
 
-### 系统要求
-
-- Windows / Linux / macOS 均可
-- 建议 1C2G 以上（数据量较大时建议更高）
-
-### 软件版本要求
-
-- Node.js：18+（建议使用 LTS）
-- npm：随 Node.js 安装
-- Git：用于拉取代码
-
-可选：
-
-- Docker：用于容器化部署
-- pm2：用于后台守护进程与开机自启
-- Nginx：用于反向代理与 HTTPS 终止
-
-## 2. 获取代码
+### 1.1 安装基础软件
 
 ```bash
-git clone <your-repo-url>
-cd <project-root>
+sudo apt update
+sudo apt install -y git curl
 ```
 
-## 3. 安装依赖
+安装 Node.js 18+（用 nvm 示例）：
 
 ```bash
-npm install
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc
+nvm install 20
+nvm use 20
+node -v
+npm -v
 ```
 
-## 4. 配置修改指南
-
-### 4.1 环境变量
-
-生产环境必须设置 `JWT_SECRET` 与 `DEFAULT_ADMIN_PASSWORD`。
-
-Linux/macOS 示例：
+安装 pm2（用于守护与重启）：
 
 ```bash
-export JWT_SECRET="change-me-in-production"
-export DEFAULT_ADMIN_PASSWORD="change-me-in-production"
-export PORT=5000
+npm i -g pm2
+pm2 -v
 ```
 
-Windows PowerShell 示例：
-
-```powershell
-$env:JWT_SECRET="change-me-in-production"
-$env:DEFAULT_ADMIN_PASSWORD="change-me-in-production"
-$env:PORT="5000"
-```
-
-配置项说明见：`docs/configuration.md`
-
-### 4.2 数据持久化（SQLite）
-
-项目使用 SQLite 数据库文件保存用户与同步数据。
-
-- 默认数据库文件：`server/users.db`
-- 建议将该文件纳入备份，并确保进程对 `server/` 目录可读写
-
-## 5. 构建
+### 1.2 拉取代码到服务器
 
 ```bash
+sudo mkdir -p /opt/bookmark-manager
+sudo chown -R $USER:$USER /opt/bookmark-manager
+git clone <your-repo-url> /opt/bookmark-manager
+cd /opt/bookmark-manager
+```
+
+### 1.3 配置生产环境变量（推荐用 .env）
+
+在服务器创建 `/opt/bookmark-manager/.env`（不要提交到仓库）：
+
+```bash
+cat > /opt/bookmark-manager/.env <<'EOF'
+NODE_ENV=production
+PORT=5000
+JWT_SECRET=change-me-in-production
+DEFAULT_ADMIN_PASSWORD=change-me-in-production
+EOF
+```
+
+### 1.4 首次构建与启动
+
+```bash
+cd /opt/bookmark-manager
+npm ci
 npm run build
+pm2 start server/index.js --name bookmark-manager --update-env
+pm2 save
 ```
 
-构建产物输出到 `dist/client`，用于生产环境由后端服务直接提供静态文件。
+验证：
 
-## 6. 启动与停止
+- 页面：`http://<host>:5000/`
+- 健康检查：`http://<host>:5000/api/health`
 
-### 6.1 直接启动（前台）
+SQLite 数据库默认位于：`/opt/bookmark-manager/server/users.db`（请做备份，确保该目录可读写）。
+
+## 2. 自动更新（Git push 自动部署）
+
+原理：在 GitHub 仓库开启 Actions；每次 push 到 `main` 分支，Actions 通过 SSH 登录服务器执行：
+
+`git pull -> npm ci -> npm run build -> pm2 restart`
+
+### 2.1 服务器创建部署用 SSH Key（推荐单独用户/密钥）
+
+在你本地（或任意安全机器）生成一对 key：
 
 ```bash
-npm run server
+ssh-keygen -t ed25519 -C "bookmark-manager-deploy" -f deploy_key
 ```
 
-启动成功后访问：
-
-- 页面：`http://<host>:<port>/`
-- 健康检查：`http://<host>:<port>/api/health`
-
-停止：在当前终端 `Ctrl + C`
-
-### 6.2 pm2 启动（推荐）
-
-安装 pm2：
+把公钥追加到服务器的部署用户（例如当前用户）的 `authorized_keys`：
 
 ```bash
-npm install -g pm2
+ssh-copy-id -i deploy_key.pub <user>@<host>
 ```
 
-启动：
+### 2.2 在 GitHub 仓库添加 Secrets
 
-```bash
-pm2 start server/index.js --name bookmark-manager
-```
+仓库 -> Settings -> Secrets and variables -> Actions -> New repository secret：
 
-查看状态：
+- `DEPLOY_HOST`：服务器 IP / 域名
+- `DEPLOY_USER`：SSH 用户名
+- `DEPLOY_SSH_KEY`：私钥内容（把 `deploy_key` 文件全文复制进去）
+- `DEPLOY_PORT`：SSH 端口（默认 22，可不填）
+
+### 2.3 工作流文件
+
+仓库已提供工作流文件：`.github/workflows/deploy-linux.yml`
+
+默认行为：push 到 `main` 时，部署到服务器 `/opt/bookmark-manager`，并重启 pm2 进程 `bookmark-manager`。
+
+## 3. 常用运维命令
+
+查看服务状态与日志：
 
 ```bash
 pm2 status
 pm2 logs bookmark-manager
 ```
 
-停止/重启：
+手动更新（不走自动部署）：
 
 ```bash
-pm2 stop bookmark-manager
-pm2 restart bookmark-manager
-```
-
-开机自启：
-
-```bash
-pm2 startup
+cd /opt/bookmark-manager
+git pull
+npm ci
+npm run build
+pm2 restart bookmark-manager --update-env
 pm2 save
 ```
 
-## 7. Docker 部署
+## 4. 常见问题
 
-### 7.1 构建镜像
+### 4.1 前端能打开但登录接口报错
 
-```bash
-docker build -t bookmark-manager .
-```
-
-### 7.2 运行容器
+确认后端端口与进程：
 
 ```bash
-docker run -d \
-  -p 5000:5000 \
-  -e PORT=5000 \
-  -e JWT_SECRET="change-me-in-production" \
-  -e DEFAULT_ADMIN_PASSWORD="change-me-in-production" \
-  --name bookmark-manager \
-  bookmark-manager
+pm2 status
+curl -sS http://localhost:5000/api/health
 ```
 
-### 7.3 持久化数据库（重要）
+### 4.2 提示缺少 JWT_SECRET
 
-建议将数据库文件挂载到宿主机：
-
-Linux/macOS：
+确认 `.env` 存在且包含 `NODE_ENV=production` 与 `JWT_SECRET`，然后重启：
 
 ```bash
-docker run -d \
-  -p 5000:5000 \
-  -e PORT=5000 \
-  -e JWT_SECRET="change-me-in-production" \
-  -e DEFAULT_ADMIN_PASSWORD="change-me-in-production" \
-  -v "$(pwd)/server/users.db:/app/server/users.db" \
-  --name bookmark-manager \
-  bookmark-manager
+cd /opt/bookmark-manager
+pm2 restart bookmark-manager --update-env
 ```
-
-Windows PowerShell：
-
-```powershell
-docker run -d `
-  -p 5000:5000 `
-  -e PORT=5000 `
-  -e JWT_SECRET="change-me-in-production" `
-  -e DEFAULT_ADMIN_PASSWORD="change-me-in-production" `
-  -v "${PWD}\server\users.db:/app/server/users.db" `
-  --name bookmark-manager `
-  bookmark-manager
-```
-
-## 8. 常见问题（FAQ）
-
-### 8.1 启动后访问页面显示 “Client build not found”
-
-原因：未执行构建或 `dist/client` 不存在。
-
-解决：
-
-```bash
-npm run build
-npm run server
-```
-
-### 8.2 端口被占用
-
-修改 `PORT` 后重新启动：
-
-```bash
-PORT=8080 npm run server
-```
-
-### 8.3 登录/同步返回 “Too many requests”
-
-原因：触发了服务端限流策略。
-
-解决：
-
-- 减少并发导入/同步频率
-- 检查是否存在循环请求
-
-### 8.4 数据库文件权限问题
-
-确保运行用户对 `server/users.db` 拥有读写权限，必要时调整权限或将数据库路径挂载到可写目录。
