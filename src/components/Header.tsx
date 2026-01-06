@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { BarsIcon, CheckSquareIcon, BanIcon, ImageIcon, MoonIcon, TimesIcon, CogIcon } from '@/components/icons';
+import { BarsIcon, CheckSquareIcon, BanIcon, ImageIcon, MoonIcon, CogIcon } from '@/components/icons';
 import { useBookmarkContext } from '@/contexts/bookmarkContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchFaviconForUrl } from '@/services/favicon';
@@ -16,16 +16,14 @@ interface HeaderProps {
   onToggleSelectionMode: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({
-  isMobileSidebarOpen,
-  setIsMobileSidebarOpen,
-
-  isQuickAccessOpen,
-  onToggleQuickAccess,
-  onOpenSettings,
-  selectionMode,
-  onToggleSelectionMode
-}) => {
+const Header: React.FC<HeaderProps> = (props) => {
+  const {
+    isMobileSidebarOpen,
+    setIsMobileSidebarOpen,
+    onOpenSettings,
+    selectionMode,
+    onToggleSelectionMode
+  } = props;
   const themeToggleRef = useRef<number | null>(null);
   const { bookmarks, patchBookmark, isSyncing } = useBookmarkContext();
   const { user, logout, isAuthenticated } = useAuth();

@@ -44,6 +44,11 @@ jobs:
           BRANCH="main"
           PM2_NAME="bookmark-manager"
 
+          if [ -s "$HOME/.nvm/nvm.sh" ]; then
+            export NVM_DIR="$HOME/.nvm"
+            . "$NVM_DIR/nvm.sh"
+          fi
+
           cd "$APP_DIR"
           git fetch --all --prune
           git reset --hard "origin/$BRANCH"
