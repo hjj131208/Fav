@@ -77,7 +77,7 @@ node tests/auth.test.js
 
 ## 生产部署（Linux）
 
-下面默认将项目部署到 `/opt/bookmark-manager`，并由 pm2 守护 `server/index.js`（页面与 API 一体）。
+下面支持将项目部署到你自定义的目录（示例默认 `/opt/bookmark-manager`），并由 pm2 守护 `server/index.js`（页面与 API 一体）。
 
 ### 1) 服务器准备（一次性）
 
@@ -109,18 +109,20 @@ pm2 -v
 ### 2) 拉取代码
 
 ```bash
-sudo mkdir -p /opt/bookmark-manager
-sudo chown -R $USER:$USER /opt/bookmark-manager
-git clone <your-repo-url> /opt/bookmark-manager
-cd /opt/bookmark-manager
+APP_DIR="/opt/bookmark-manager"
+
+sudo mkdir -p "$APP_DIR"
+sudo chown -R $USER:$USER "$APP_DIR"
+git clone <your-repo-url> "$APP_DIR"
+cd "$APP_DIR"
 ```
 
 ### 3) 配置生产环境变量（推荐用 .env）
 
-在服务器创建 `/opt/bookmark-manager/.env`（不要提交到仓库）：
+在服务器创建 `$APP_DIR/.env`（不要提交到仓库）：
 
 ```bash
-cat > /opt/bookmark-manager/.env <<'EOF'
+cat > "$APP_DIR/.env" <<'EOF'
 NODE_ENV=production
 PORT=5000
 JWT_SECRET=change-me-in-production
@@ -131,7 +133,7 @@ EOF
 ### 4) 构建与启动
 
 ```bash
-cd /opt/bookmark-manager
+cd "$APP_DIR"
 npm ci
 npm run build
 pm2 start server/index.js --name bookmark-manager --update-env
@@ -145,18 +147,21 @@ pm2 save
 
 数据库位置：
 
-- SQLite：`/opt/bookmark-manager/server/users.db`（请做备份，确保目录可读写）
+- SQLite：`$APP_DIR/server/users.db`（请做备份，确保目录可读写）
 
 ## 更新部署（手动）
 
 在服务器执行（保持与首次部署一致的目录与 pm2 名称）：
 
 ```bash
-cd /opt/bookmark-manager
+APP_DIR="/opt/bookmark-manager"
+PM2_NAME="bookmark-manager"
+
+cd "$APP_DIR"
 git pull
 npm ci
 npm run build
-pm2 restart bookmark-manager --update-env
+pm2 restart "$PM2_NAME" --update-env
 pm2 save
 ```
 
@@ -196,7 +201,7 @@ curl -sS http://localhost:5000/api/health
 
 生产启动提示缺少 `JWT_SECRET`：
 
-- 确认 `/opt/bookmark-manager/.env` 存在且包含 `NODE_ENV=production` 与 `JWT_SECRET`
+- 确认 `$APP_DIR/.env` 存在且包含 `NODE_ENV=production` 与 `JWT_SECRET`
 - 重启：`pm2 restart bookmark-manager --update-env`
 
 ## 许可证
