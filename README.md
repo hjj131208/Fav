@@ -13,7 +13,7 @@
 - [系统要求](#系统要求)
 - [快速开始（开发）](#快速开始开发)
 - [生产部署（Linux）](#生产部署linux)
-- [自动更新（Git push）](#自动更新git-push)
+- [更新部署（手动）](#更新部署手动)
 - [配置说明](#配置说明)
 - [运维命令](#运维命令)
 - [验证与排障](#验证与排障)
@@ -147,45 +147,18 @@ pm2 save
 
 - SQLite：`/opt/bookmark-manager/server/users.db`（请做备份，确保目录可读写）
 
-## 自动更新（Git push）
+## 更新部署（手动）
 
-原理：在 GitHub 仓库开启 Actions；每次 push 到 `main` 分支，Actions 通过 SSH 登录服务器执行：
-
-`git fetch/reset -> npm ci -> npm run build -> pm2 restart`
-
-### 1) 准备部署 SSH Key
-
-在你本地（或任意安全机器）生成一对 key：
+在服务器执行（保持与首次部署一致的目录与 pm2 名称）：
 
 ```bash
-ssh-keygen -t ed25519 -C "bookmark-manager-deploy" -f deploy_key
+cd /opt/bookmark-manager
+git pull
+npm ci
+npm run build
+pm2 restart bookmark-manager --update-env
+pm2 save
 ```
-
-把公钥追加到服务器部署用户的 `authorized_keys`：
-
-```bash
-ssh-copy-id -i deploy_key.pub <user>@<host>
-```
-
-### 2) 配置 GitHub Actions Secrets
-
-仓库 -> Settings -> Secrets and variables -> Actions -> New repository secret：
-
-- `DEPLOY_HOST`：服务器 IP / 域名
-- `DEPLOY_USER`：SSH 用户名
-- `DEPLOY_SSH_KEY`：私钥内容（把 `deploy_key` 文件全文复制进去）
-- `DEPLOY_PORT`：SSH 端口（默认 22，可不填）
-
-### 3) 工作流说明
-
-工作流文件：`.github/workflows/deploy-linux.yml`
-
-默认行为：
-
-- push 到 `main` 时部署到 `/opt/bookmark-manager`
-- 通过 pm2 重启 `bookmark-manager`
-
-如果服务器使用 nvm 安装 Node.js，工作流会在远端自动加载 nvm 环境，确保 `node/npm/pm2` 可用。
 
 ## 配置说明
 
