@@ -53,7 +53,6 @@ export function BookmarkProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user || !token) return;
-
     let cancelled = false;
 
     const syncOnLogin = async () => {
@@ -62,44 +61,52 @@ export function BookmarkProvider({ children }: { children: ReactNode }) {
         const ownerKey = 'bookmarkOwnerUserId';
         const ownerUserId = localStorage.getItem(ownerKey);
 
-        if (ownerUserId && ownerUserId === currentUserId) {
-          const res = await fetch(`${API_BASE_URL}/api/user/sync`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`
-            },
-            body: JSON.stringify({ categories, bookmarks })
-          });
+        const res = await fetch(`${API_BASE_URL}/api/user/data`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
 
-          if (!res.ok) {
-            const text = await res.text().catch(() => '');
-            throw new Error(text || '同步失败');
-          }
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(text || '同步数据失败');
+        }
 
-          if (cancelled) return;
-          localStorage.setItem(ownerKey, currentUserId);
-          toast.success('已将本地修改同步到云端');
-        } else {
-          const res = await fetch(`${API_BASE_URL}/api/user/data`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+        const data = await res.json();
+        if (cancelled) return;
 
-          if (!res.ok) {
-            const text = await res.text().catch(() => '');
-            throw new Error(text || '同步数据失败');
-          }
+        const hasServerCategories =
+          data && Array.isArray(data.categories) && data.categories.length > 0;
+        const hasServerBookmarks =
+          data && Array.isArray(data.bookmarks) && data.bookmarks.length > 0;
+        const hasServerData = hasServerCategories || hasServerBookmarks;
 
-          const data = await res.json();
-          if (cancelled) return;
-
-          if (data) {
-            if (Array.isArray(data.categories)) setCategories(data.categories);
-            if (Array.isArray(data.bookmarks)) setBookmarks(data.bookmarks);
-          }
-
+        if (hasServerData) {
+          if (hasServerCategories) setCategories(data.categories);
+          if (hasServerBookmarks) setBookmarks(data.bookmarks);
           localStorage.setItem(ownerKey, currentUserId);
           toast.success('已同步云端数据');
+        } else {
+          const hasLocalData = categories.length > 0 || bookmarks.length > 0;
+          if (hasLocalData && (!ownerUserId || ownerUserId === currentUserId)) {
+            const syncRes = await fetch(`${API_BASE_URL}/api/user/sync`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({ categories, bookmarks })
+            });
+
+            if (!syncRes.ok) {
+              const text = await syncRes.text().catch(() => '');
+              throw new Error(text || '同步失败');
+            }
+
+            if (cancelled) return;
+            localStorage.setItem(ownerKey, currentUserId);
+            toast.success('已将本地修改同步到云端');
+          } else {
+            localStorage.setItem(ownerKey, currentUserId);
+          }
         }
       } catch (e) {
         console.error(e);
@@ -111,6 +118,41 @@ export function BookmarkProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+    };
+  }, [user, token]);
+
+  useEffect(() => {
+    if (!user || !token) return;
+    let cancelled = false;
+
+    const fetchLatest = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/user/data`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(text || '同步数据失败');
+        }
+
+        const data = await res.json();
+        if (cancelled) return;
+
+        if (data) {
+          if (Array.isArray(data.categories)) setCategories(data.categories);
+          if (Array.isArray(data.bookmarks)) setBookmarks(data.bookmarks);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    const intervalId = window.setInterval(fetchLatest, 60_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
     };
   }, [user, token]);
 

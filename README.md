@@ -77,7 +77,7 @@ node tests/auth.test.js
 
 ## 生产部署（Linux）
 
-下面支持将项目部署到你自定义的目录（示例默认 `/opt/bookmark-manager`），并由 pm2 守护 `server/index.js`（页面与 API 一体）。
+下面支持将项目部署到你自定义的目录（例如 `/opt/bookmark-manager`、`/srv/apps/bookmarks` 等），并由 pm2 守护 `server/index.js`（页面与 API 一体）。
 
 ### 1) 服务器准备（一次性）
 
@@ -109,20 +109,26 @@ pm2 -v
 ### 2) 拉取代码
 
 ```bash
-APP_DIR="/opt/bookmark-manager"
-
-sudo mkdir -p "$APP_DIR"
-sudo chown -R $USER:$USER "$APP_DIR"
-git clone <your-repo-url> "$APP_DIR"
-cd "$APP_DIR"
+sudo mkdir -p /path/to/bookmark-manager
+sudo chown -R $USER:$USER /path/to/bookmark-manager
+git clone <your-repo-url> /path/to/bookmark-manager
+cd /path/to/bookmark-manager
 ```
 
-### 3) 配置生产环境变量（推荐用 .env）
-
-在服务器创建 `$APP_DIR/.env`（不要提交到仓库）：
+### 3) 安装依赖并构建前端
 
 ```bash
-cat > "$APP_DIR/.env" <<'EOF'
+cd /path/to/bookmark-manager
+npm ci
+npm run build
+```
+
+### 4) 配置生产环境变量（推荐用 .env）
+
+在服务器创建 `/path/to/bookmark-manager/.env`（不要提交到仓库）：
+
+```bash
+cat > /path/to/bookmark-manager/.env <<'EOF'
 NODE_ENV=production
 PORT=5000
 JWT_SECRET=change-me-in-production
@@ -130,12 +136,10 @@ DEFAULT_ADMIN_PASSWORD=change-me-in-production
 EOF
 ```
 
-### 4) 构建与启动
+### 5) 启动服务
 
 ```bash
-cd "$APP_DIR"
-npm ci
-npm run build
+cd /path/to/bookmark-manager
 pm2 start server/index.js --name bookmark-manager --update-env
 pm2 save
 ```
@@ -145,23 +149,20 @@ pm2 save
 - 页面：`http://<host>:5000/`
 - 健康检查：`http://<host>:5000/api/health`
 
-数据库位置：
+数据库位置（根据你的部署目录调整）：
 
-- SQLite：`$APP_DIR/server/users.db`（请做备份，确保目录可读写）
+- SQLite：`/path/to/bookmark-manager/server/users.db`（请做备份，确保目录可读写）
 
 ## 更新部署（手动）
 
 在服务器执行（保持与首次部署一致的目录与 pm2 名称）：
 
 ```bash
-APP_DIR="/opt/bookmark-manager"
-PM2_NAME="bookmark-manager"
-
-cd "$APP_DIR"
+cd /path/to/bookmark-manager
 git pull
 npm ci
 npm run build
-pm2 restart "$PM2_NAME" --update-env
+pm2 restart bookmark-manager --update-env
 pm2 save
 ```
 
@@ -201,7 +202,7 @@ curl -sS http://localhost:5000/api/health
 
 生产启动提示缺少 `JWT_SECRET`：
 
-- 确认 `$APP_DIR/.env` 存在且包含 `NODE_ENV=production` 与 `JWT_SECRET`
+- 确认 `/path/to/bookmark-manager/.env` 存在且包含 `NODE_ENV=production` 与 `JWT_SECRET`
 - 重启：`pm2 restart bookmark-manager --update-env`
 
 ## 许可证
