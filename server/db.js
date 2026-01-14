@@ -79,10 +79,20 @@ function initDb() {
               visit_count INTEGER DEFAULT 0,
               tags TEXT,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              notes TEXT,
               PRIMARY KEY (id, user_id),
               FOREIGN KEY(user_id) REFERENCES users(id),
               FOREIGN KEY(category_id) REFERENCES categories(id)
-            )`);
+            )`, (err) => {
+              if (err) return;
+              db.all('PRAGMA table_info(bookmarks)', (pragmaErr, rows) => {
+                if (pragmaErr) return;
+                const hasNotes = Array.isArray(rows) && rows.some((col) => col.name === 'notes');
+                if (!hasNotes) {
+                  db.run('ALTER TABLE bookmarks ADD COLUMN notes TEXT');
+                }
+              });
+            });
   });
 }
 
@@ -272,6 +282,7 @@ export const getUserData = (userId) => {
             isFavorite: !!b.is_favorite,
             visitCount: b.visit_count,
             tags: b.tags ? JSON.parse(b.tags) : [],
+            notes: b.notes,
             createdAt: b.created_at
         }));
 
@@ -297,7 +308,7 @@ export const syncUserData = (userId, { categories, bookmarks }) => {
       });
       catStmt.finalize();
 
-      const bookStmt = db.prepare('INSERT INTO bookmarks (id, user_id, category_id, title, url, icon, description, is_pinned, is_favorite, visit_count, tags, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+      const bookStmt = db.prepare('INSERT INTO bookmarks (id, user_id, category_id, title, url, icon, description, is_pinned, is_favorite, visit_count, tags, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
       bookmarks.forEach(b => {
         bookStmt.run(
             b.id, 
@@ -311,6 +322,7 @@ export const syncUserData = (userId, { categories, bookmarks }) => {
             b.isFavorite ? 1 : 0, 
             b.visitCount || 0, 
             JSON.stringify(b.tags || []),
+            b.notes || null,
             b.createdAt || new Date().toISOString()
         );
       });
@@ -367,7 +379,7 @@ export const deleteCategory = (userId, id) => {
 
 export const addBookmark = (userId, bookmark) => {
   return new Promise((resolve, reject) => {
-    const sql = 'INSERT INTO bookmarks (id, user_id, category_id, title, url, icon, description, is_pinned, is_favorite, visit_count, tags, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+    const sql = 'INSERT INTO bookmarks (id, user_id, category_id, title, url, icon, description, is_pinned, is_favorite, visit_count, tags, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
     db.run(sql, [
         bookmark.id, 
         userId, 
@@ -380,6 +392,7 @@ export const addBookmark = (userId, bookmark) => {
         bookmark.isFavorite ? 1 : 0, 
         bookmark.visitCount || 0, 
         JSON.stringify(bookmark.tags || []),
+        bookmark.notes || null,
         bookmark.createdAt || new Date().toISOString()
     ], (err) => {
       if (err) reject(err);
@@ -402,6 +415,7 @@ export const updateBookmark = (userId, id, bookmark) => {
       if (bookmark.isPinned !== undefined) { fields.push('is_pinned = ?'); values.push(bookmark.isPinned ? 1 : 0); }
       if (bookmark.isFavorite !== undefined) { fields.push('is_favorite = ?'); values.push(bookmark.isFavorite ? 1 : 0); }
       if (bookmark.visitCount !== undefined) { fields.push('visit_count = ?'); values.push(bookmark.visitCount); }
+      if (bookmark.notes !== undefined) { fields.push('notes = ?'); values.push(bookmark.notes); }
       
       if (fields.length === 0) return resolve();
   
